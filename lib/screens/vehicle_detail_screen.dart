@@ -5,6 +5,7 @@ import '../models/device.dart';
 import '../utils/theme.dart';
 import 'history_screen.dart';
 import 'commands_screen.dart';
+import 'live_tracking_screen.dart';
 
 class VehicleDetailScreen extends StatelessWidget {
   final Device device;
@@ -131,7 +132,14 @@ class VehicleDetailScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LiveTrackingScreen(device: device),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.my_location),
                     label: const Text('Live Tracking'),
                   ),

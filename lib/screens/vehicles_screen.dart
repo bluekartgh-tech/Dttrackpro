@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../models/device.dart';
 import '../utils/theme.dart';
 import 'vehicle_detail_screen.dart';
+import 'live_tracking_screen.dart';
 
 class VehiclesScreen extends StatefulWidget {
   const VehiclesScreen({super.key});
@@ -24,18 +25,49 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
 
   List<Device> _filtered(List<Device> all) {
     var list = all;
-    if (_filter == 'Online') {
-      list = list.where((d) => d.isOnline).toList();
-    } else if (_filter == 'Offline') {
-      list = list.where((d) => !d.isOnline).toList();
-    } else if (_filter == 'Idle') {
-      list = list.where((d) => d.isOnline && !d.isMoving).toList();
+    switch (_filter) {
+      case 'Online':
+        list = list.where((d) => d.isOnline).toList();
+        break;
+      case 'Offline':
+        list = list.where((d) => !d.isOnline).toList();
+        break;
+      case 'Moving':
+        list = list.where((d) => d.isMoving).toList();
+        break;
+      case 'Idle':
+        list = list.where((d) => d.isOnline && !d.isMoving).toList();
+        break;
+      case 'Ignition On':
+        list = list.where((d) {
+          final ign = d.ignition?.toLowerCase() ?? '';
+          return ign.contains('on') || ign == 'true' || ign == '1';
+        }).toList();
+        break;
     }
     final q = _searchCtrl.text.toLowerCase();
     if (q.isNotEmpty) {
-      list = list.where((d) => d.name.toLowerCase().contains(q)).toList();
+      list = list.where((d) =>
+          d.name.toLowerCase().contains(q) ||
+          (d.plateNumber?.toLowerCase().contains(q) ?? false) ||
+          (d.imei?.toLowerCase().contains(q) ?? false)).toList();
     }
     return list;
+  }
+
+  int _count(List<Device> all, String filter) {
+    switch (filter) {
+      case 'Online': return all.where((d) => d.isOnline).length;
+      case 'Offline': return all.where((d) => !d.isOnline).length;
+      case 'Moving': return all.where((d) => d.isMoving).length;
+      case 'Idle': return all.where((d) => d.isOnline && !d.isMoving).length;
+      case 'Ignition On':
+        return all.where((d) {
+          final ign = d.ignition?.toLowerCase() ?? '';
+          return ign.contains('on') || ign == 'true' || ign == '1';
+        }).length;
+      default: return all.length;
+    }
   }
 
   @override
@@ -49,25 +81,20 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         title: const Text('Vehicles'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh),
+            onPressed: () => provider.refreshDevices(),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
               controller: _searchCtrl,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Search vehicle...',
+                hintText: 'Search name, plate, IMEI...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 filled: true,
                 fillColor: Colors.white,
@@ -84,16 +111,13 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // Filters
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _filterChip('All', provider.totalVehicles),
-                _filterChip('Online', provider.onlineCount),
-                _filterChip('Offline', provider.offlineCount),
-                _filterChip('Idle', provider.idleCount),
+                for (final f in ['All', 'Online', 'Offline', 'Moving', 'Idle', 'Ignition On'])
+                  _filterChip(f, _count(provider.devices, f)),
               ],
             ),
           ),
@@ -107,10 +131,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: devices.length,
-                      itemBuilder: (_, i) {
-                        final d = devices[i];
-                        return _vehicleCard(context, d, provider);
-                      },
+                      itemBuilder: (_, i) => _vehicleCard(context, devices[i], provider),
                     ),
             ),
           ),
@@ -133,9 +154,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           fontSize: 13,
         ),
-        side: BorderSide(
-          color: selected ? AppColors.primary : Colors.grey.shade300,
-        ),
+        side: BorderSide(color: selected ? AppColors.primary : Colors.grey.shade300),
       ),
     );
   }
@@ -147,86 +166,140 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             ? AppColors.idle
             : AppColors.offline;
 
-    return GestureDetector(
-      onTap: () {
-        provider.selectDevice(d);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => VehicleDetailScreen(device: d)),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            // Car icon
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.directions_car_filled, color: statusColor, size: 28),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              provider.selectDevice(d);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => VehicleDetailScreen(device: d)),
+              );
+            },
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  Text(
-                    d.name,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                  const SizedBox(height: 3),
-                  if (d.plateNumber != null && d.plateNumber!.isNotEmpty)
-                    Text(
-                      d.plateNumber!,
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${d.speed.toStringAsFixed(0)} km/h • ${d.statusLabel}',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    child: Icon(Icons.directions_car_filled, color: statusColor, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(d.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        if (d.plateNumber != null && d.plateNumber!.isNotEmpty)
+                          Text(d.plateNumber!, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${d.speed.toStringAsFixed(0)} km/h • ${d.statusLabel}',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          d.statusLabel,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                        ),
+                      ),
+                      if (d.time != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          d.time!.length > 16 ? d.time!.substring(11, 16) : d.time!,
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    d.statusLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: statusColor,
-                    ),
-                  ),
-                ),
-                if (d.time != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    d.time!.length > 16 ? d.time!.substring(11, 16) : d.time!,
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                  ),
+          ),
+          if (d.sensors.isNotEmpty || d.battery != null || d.ignition != null || d.fuel != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (d.battery != null) _sensorChip(Icons.battery_full, d.battery!),
+                  if (d.ignition != null) _sensorChip(Icons.power_settings_new, 'Ign ${d.ignition}'),
+                  if (d.fuel != null) _sensorChip(Icons.local_gas_station, d.fuel!),
+                  for (final s in d.sensors.take(3))
+                    if (!s.name.toLowerCase().contains('battery') &&
+                        !s.name.toLowerCase().contains('ignition') &&
+                        !s.name.toLowerCase().contains('fuel'))
+                      _sensorChip(Icons.sensors, '${s.name}: ${s.value}'),
                 ],
-              ],
+              ),
             ),
-          ],
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => LiveTrackingScreen(device: d)),
+                  );
+                },
+                icon: const Icon(Icons.my_location, size: 18),
+                label: const Text('Live Tracking'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sensorChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }
