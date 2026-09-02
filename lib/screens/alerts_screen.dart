@@ -144,7 +144,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                 ),
                               ),
                               Text(
-                                e['time']?.toString().length > 16
+                                (e['time']?.toString().length ?? 0) > 16
                                     ? e['time'].toString().substring(11, 16)
                                     : (e['time']?.toString() ?? ''),
                                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
