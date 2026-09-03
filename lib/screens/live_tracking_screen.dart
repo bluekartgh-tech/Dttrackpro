@@ -247,7 +247,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
                     initialCenter: _displayPos,
                     initialZoom: 16,
                     interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.all & \~InteractiveFlag.rotate,
+                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                     ),
                     onPositionChanged: (pos, hasGesture) {
                       if (hasGesture) setState(() => _follow = false);
