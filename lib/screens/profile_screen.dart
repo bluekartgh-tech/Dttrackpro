@@ -1,10 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../utils/theme.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  void _showInfo(BuildContext context, String title, String body) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePassword(BuildContext context) {
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: oldCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
+            TextField(controller: newCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+            TextField(controller: confCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm password')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (newCtrl.text != confCtrl.text) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+                return;
+              }
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Password change – connect /api/edit_user endpoint if available')),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotifications(BuildContext context) {
+    bool push = true, sound = true, email = false;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Notification Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(title: const Text('Push notifications'), value: push, onChanged: (v) => setLocal(() => push = v)),
+              SwitchListTile(title: const Text('Sound'), value: sound, onChanged: (v) => setLocal(() => sound = v)),
+              SwitchListTile(title: const Text('Email alerts'), value: email, onChanged: (v) => setLocal(() => email = v)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAppSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('App Settings'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('• Distance unit: km'),
+            Text('• Speed unit: km/h'),
+            Text('• Map: OpenStreetMap'),
+            Text('• Auto-refresh: 6–10 sec'),
+            SizedBox(height: 8),
+            Text('More options can be wired to /api/edit_setup_data'),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +137,25 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _tile(Icons.person_outline, 'Profile Information', () {}),
-          _tile(Icons.lock_outline, 'Change Password', () {}),
-          _tile(Icons.notifications_outlined, 'Notification Settings', () {}),
-          _tile(Icons.settings_outlined, 'App Settings', () {}),
-          _tile(Icons.help_outline, 'Help & Support', () {}),
-          _tile(Icons.info_outline, 'About DTTrack Pro', () {}),
+          _tile(Icons.person_outline, 'Profile Information', () {
+            _showInfo(context, 'Profile Information',
+                'Email: $email\nPlan: $plan\nDays left: $daysLeft\n\nUser data from /api/get_user_data');
+          }),
+          _tile(Icons.lock_outline, 'Change Password', () => _showChangePassword(context)),
+          _tile(Icons.notifications_outlined, 'Notification Settings', () => _showNotifications(context)),
+          _tile(Icons.settings_outlined, 'App Settings', () => _showAppSettings(context)),
+          _tile(Icons.help_outline, 'Help & Support', () async {
+            final url = Uri.parse('https://app.dttrack.com');
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+            } else {
+              _showInfo(context, 'Help & Support', 'Visit app.dttrack.com or contact your admin.');
+            }
+          }),
+          _tile(Icons.info_outline, 'About DTTrack Pro', () {
+            _showInfo(context, 'About DTTrack Pro',
+                'DTTrack Pro\nGPS Tracking Solution\n\nBackend: app.dttrack.com\nAPI: GPSWOX-compatible\nVersion: 1.0.0');
+          }),
           const SizedBox(height: 24),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(

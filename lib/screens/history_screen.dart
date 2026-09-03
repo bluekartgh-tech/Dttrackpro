@@ -128,6 +128,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final currentTime = _rawPoints.isNotEmpty && _playIndex < _rawPoints.length
         ? (_rawPoints[_playIndex]['time']?.toString() ?? '')
         : '';
+    final currentAddress = _rawPoints.isNotEmpty && _playIndex < _rawPoints.length
+        ? (_rawPoints[_playIndex]['address']?.toString() ?? '')
+        : '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -308,7 +311,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      '$currentTime  •  $currentSpeed km/h  •  \( {_playIndex + 1}/ \){_points.length}',
+                      '\$currentTime  •  \$currentSpeed km/h  •  \${_playIndex + 1}/\${_points.length}',
                       style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),

@@ -6,6 +6,10 @@ import 'geofences_screen.dart';
 import 'commands_screen.dart';
 import 'reports_screen.dart';
 import 'profile_screen.dart';
+import 'vehicles_screen.dart';
+import 'alerts_screen.dart';
+import 'dashboard_screen.dart';
+import 'live_map_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -74,22 +78,34 @@ class MoreScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
-                  _item(context, Icons.dashboard, 'Dashboard', null),
-                  _item(context, Icons.map, 'Live Map', null),
-                  _item(context, Icons.my_location, 'Live Tracking', null),
-                  _item(context, Icons.directions_car, 'Vehicles', null),
-                  _item(context, Icons.history, 'History / Playback', null),
+                  _item(context, Icons.dashboard, 'Dashboard', () { Navigator.pop(context); }),
+                  _item(context, Icons.map, 'Live Map', () { Navigator.pop(context); }),
+                  _item(context, Icons.my_location, 'Live Tracking', () {
+                    final devices = provider.devices;
+                    if (devices.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No vehicles')));
+                      return;
+                    }
+                    // open first vehicle live tracking via vehicles screen flow
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Open a vehicle → Live Tracking')));
+                  }),
+                  _item(context, Icons.directions_car, 'Vehicles', () { Navigator.pop(context); }),
+                  _item(context, Icons.history, 'History / Playback', () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Open a vehicle → History')));
+                  }),
                   _item(context, Icons.fence, 'Geofences', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const GeofencesScreen()));
                   }),
-                  _item(context, Icons.notifications, 'Alerts', null),
+                  _item(context, Icons.notifications, 'Alerts', () { Navigator.pop(context); }),
                   _item(context, Icons.terminal, 'Commands', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const CommandsScreen()));
                   }),
                   _item(context, Icons.assessment, 'Reports', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsScreen()));
                   }),
-                  _item(context, Icons.people, 'Users', null),
+                  _item(context, Icons.people, 'Users', () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Users – admin feature')));
+                  }),
                   _item(context, Icons.settings, 'Settings', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                   }),

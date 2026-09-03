@@ -243,7 +243,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           if (d.sensors.isNotEmpty || d.battery != null || d.ignition != null || d.fuel != null)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 6,
@@ -256,6 +256,25 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                         !s.name.toLowerCase().contains('ignition') &&
                         !s.name.toLowerCase().contains('fuel'))
                       _sensorChip(Icons.sensors, '${s.name}: ${s.value}'),
+                ],
+              ),
+            ),
+          // Address under sensors
+          if (d.address != null && d.address != '-' && d.address!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.place, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      d.address!,
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
