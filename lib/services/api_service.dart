@@ -142,13 +142,53 @@ class ApiService {
 
   // ========== COMMANDS ==========
   Future<Map<String, dynamic>> getSendCommandData() async {
-    final data = await _get('/api/send_command_data');
+    dynamic data;
+    try {
+      data = await _get('/api/send_command_data');
+    } catch (_) {
+      try {
+        data = await _get('/api/get_command_data');
+      } catch (_) {
+        data = {};
+      }
+    }
     return data is Map ? Map<String, dynamic>.from(data) : {};
   }
 
   Future<Map<String, dynamic>> sendCommand({
     required int deviceId,
     required String type, // gprs / sms
+    String? message,
+    int? templateId,
+  }) async {
+    final body = <String, dynamic>{
+      'device_id': deviceId,
+      'type': type,
+    };
+    if (message != null) body['message'] = message;
+    if (templateId != null) body['template_id'] = templateId;
+    Map<String, dynamic> data = {};
+    try {
+      data = Map<String, dynamic>.from(await _post('/api/send_gprs_command', body));
+    } catch (_) {
+      try {
+        data = Map<String, dynamic>.from(await _post('/api/send_command', body));
+      } catch (e2) {
+        // fallback: some installs use device_id + command
+        final body2 = {
+          'device_id': deviceId.toString(),
+          'command': message ?? '',
+          'type': type,
+        };
+        data = Map<String, dynamic>.from(await _post('/api/send_command', body2));
+      }
+    }
+    return data is Map ? Map<String, dynamic>.from(data) : {};
+  }
+
+  Future<Map<String, dynamic>> _sendCommandLegacy({
+    required int deviceId,
+    required String type,
     String? message,
     int? templateId,
   }) async {
